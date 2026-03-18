@@ -849,6 +849,20 @@
     closeConfirm();
   }
 
+  // Auto reset at 3:00 AM every day
+  function scheduleAutoReset() {
+    const now = new Date();
+    const next3am = new Date();
+    next3am.setHours(3, 0, 0, 0);
+    if (next3am <= now) next3am.setDate(next3am.getDate() + 1);
+    const msUntil3am = next3am - now;
+    setTimeout(() => {
+      doReset();
+      scheduleAutoReset(); // schedule next day
+    }, msUntil3am);
+  }
+  scheduleAutoReset();
+
   document.addEventListener('keydown', e => {
     if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); if (!busy) takeNumber(); }
     if (e.code === 'Escape') {
