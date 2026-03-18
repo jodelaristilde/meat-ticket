@@ -211,15 +211,22 @@
     // Listen for now serving from meat display
     db.ref('meat/nowServing').on('value', snap => {
       const data = snap.val();
+      const nowNum = data && data.number ? parseInt(data.number) : 0;
+      const myNum = parseInt(numStr);
       document.getElementById('nowServing').textContent =
         data && data.number ? data.number : '—';
+
+      // If now serving has passed their number, clear saved ticket so next scan gets a new number
+      if (nowNum >= myNum) {
+        localStorage.removeItem('myTicket');
+      }
     });
   }
 
   async function getMyNumber() {
     try {
-      // Check if customer already has a ticket this session
-      const saved = sessionStorage.getItem('myTicket');
+      // Check if customer already has a valid ticket saved
+      const saved = localStorage.getItem('myTicket');
       if (saved) {
         const t = JSON.parse(saved);
         showTicket(t.num, t.date, t.time);
@@ -243,8 +250,8 @@
         const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
-        // Save to sessionStorage so refresh doesn't get new number
-        sessionStorage.setItem('myTicket', JSON.stringify({ num: numStr, date: dateStr, time: timeStr }));
+        // Save to localStorage so it persists even if browser is closed
+        localStorage.setItem('myTicket', JSON.stringify({ num: numStr, date: dateStr, time: timeStr }));
 
         showTicket(numStr, dateStr, timeStr);
       }
