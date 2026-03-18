@@ -167,7 +167,6 @@
       <span id="ticketDate">—</span>
       <span id="ticketTime">—</span>
     </div>
-    <div class="now-serving">Now serving: <span id="nowServing" style="color:#e8431a;font-weight:700;">—</span></div>
     <div class="footer-text">
       Please wait for your number to be called<br>
       Espere a que llamen su número<br>
@@ -225,13 +224,6 @@
         // Show ticket
         document.getElementById('loadingMsg').style.display = 'none';
         document.getElementById('ticketContent').style.display = 'block';
-
-        // Listen for now serving from meat display
-        db.ref('meat/nowServing').on('value', snap => {
-          const data = snap.val();
-          document.getElementById('nowServing').textContent =
-            data && data.number ? data.number : '—';
-        });
       }
     } catch (err) {
       document.getElementById('loadingMsg').style.display = 'none';
