@@ -760,26 +760,38 @@
   }
 
   function takeNumber() {
+    if (busy) return;
     busy = true;
-    current++;
-    if (current > 999) current = 1;
-    issuedTotal++;
 
-    const numStr = pad(current);
-    const el = document.getElementById('currentNumber');
-    el.textContent = numStr;
-    el.classList.remove('animate');
-    void el.offsetWidth;
-    el.classList.add('animate');
+    // Get next number from Firebase atomically
+    db.ref('meat/ticketCounter').transaction(val => {
+      if (val === null) return 1;
+      if (val >= 999) return 1;
+      return val + 1;
+    }).then(result => {
+      if (!result.committed) { busy = false; return; }
 
-    document.getElementById('issuedCount').textContent = issuedTotal;
-    document.getElementById('statusDot').classList.add('active');
-    document.getElementById('statusText').textContent = 'Number issued — tap again for next';
+      current = result.snapshot.val();
+      issuedTotal++;
+      const numStr = pad(current);
 
-    flashScreen();
-    triggerPrint(numStr);
-    syncToFirebase(numStr);
-    setTimeout(() => { busy = false; }, 1000);
+      const el = document.getElementById('currentNumber');
+      el.textContent = numStr;
+      el.classList.remove('animate');
+      void el.offsetWidth;
+      el.classList.add('animate');
+
+      document.getElementById('issuedCount').textContent = issuedTotal;
+      document.getElementById('statusDot').classList.add('active');
+      document.getElementById('statusText').textContent = 'Number issued — tap again for next';
+
+      // Sync current serving to Firebase
+      db.ref('meat/current').set({ number: numStr, updated: Date.now() });
+
+      flashScreen();
+      triggerPrint(numStr);
+      setTimeout(() => { busy = false; }, 1000);
+    }).catch(() => { busy = false; });
   }
 
   function generateBarcode(num) {
