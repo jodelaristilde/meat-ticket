@@ -659,11 +659,12 @@
   const db = firebase.database();
 
   function syncToFirebase(numStr) {
-    db.ref('meat/queue').transaction(current => {
+    db.ref('meat/ticketCounter').transaction(current => {
       if (current === null) return 1;
       if (current >= 999) return 1;
       return current + 1;
     });
+    db.ref('meat/current').set({ number: numStr, updated: Date.now() });
   }
   let issuedTotal = 0;
   let busy = false;
