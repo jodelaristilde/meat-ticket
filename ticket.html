@@ -209,7 +209,7 @@
     document.getElementById('ticketContent').style.display = 'block';
 
     // Listen for now serving from meat display
-    db.ref('meat/current').on('value', snap => {
+    db.ref('meat/nowServing').on('value', snap => {
       const data = snap.val();
       document.getElementById('nowServing').textContent =
         data && data.number ? data.number : '—';
