@@ -362,52 +362,61 @@
     if (navigator.vibrate) navigator.vibrate(pattern);
   }
 
-    // Listen for now serving from meat display
+  function handleNowServing(nowNum, numStr) {
+    const myNum = parseInt(numStr);
+    const diff = myNum - nowNum;
+
+    // Update display
+    document.getElementById('nowServing').textContent =
+      nowNum > 0 ? String(nowNum).padStart(3, '0') : '—';
+
+    const alertBox = document.getElementById('alertBox');
+    const alertTitle = document.getElementById('alertTitle');
+    const alertSub = document.getElementById('alertSub');
+    const alertIcon = document.getElementById('alertIcon');
+
+    if (nowNum >= myNum && nowNum > 0) {
+      // EXPIRED — their number was already called
+      localStorage.removeItem('myTicket');
+      document.getElementById('ticketContent').style.display = 'none';
+      document.getElementById('expiredBox').style.display = 'block';
+    } else if (diff <= 2 && diff > 0 && !alerted2) {
+      // URGENT — 2 or fewer away
+      alerted2 = true;
+      alertBox.style.display = 'block';
+      alertBox.classList.add('urgent');
+      alertIcon.textContent = '🚨';
+      alertTitle.textContent = 'Your turn is NOW!';
+      alertSub.textContent = 'Please come to the meat counter immediately';
+      playAlertSound(); playAlertSound();
+      vibrate([300, 100, 300, 100, 300]);
+    } else if (diff <= 5 && diff > 2 && !alerted5) {
+      // WARNING — 5 or fewer away
+      alerted5 = true;
+      alertBox.style.display = 'block';
+      alertBox.classList.remove('urgent');
+      alertIcon.textContent = '⚠️';
+      alertTitle.textContent = 'Your number is almost up!';
+      alertSub.textContent = 'Please make your way to the meat counter';
+      playAlertSound();
+      vibrate([200, 100, 200]);
+    }
+  }
+
+    // Listen for now serving from BOTH displays
     db.ref('meat/nowServing').on('value', snap => {
       const data = snap.val();
       const nowNum = data && data.number ? parseInt(data.number) : 0;
-      const myNum = parseInt(numStr);
-      const diff = myNum - nowNum;
-
-      document.getElementById('nowServing').textContent =
-        data && data.number ? data.number : '—';
-
-      const alertBox = document.getElementById('alertBox');
-      const alertTitle = document.getElementById('alertTitle');
-      const alertSub = document.getElementById('alertSub');
-      const alertIcon = document.getElementById('alertIcon');
-
-      if (diff <= 2 && diff > 0 && !alerted2) {
-        // URGENT — 2 or fewer away
-        alerted2 = true;
-        alertBox.style.display = 'block';
-        alertBox.classList.add('urgent');
-        alertIcon.textContent = '🚨';
-        alertTitle.textContent = 'Your turn is NOW!';
-        alertSub.textContent = 'Please come to the meat counter immediately';
-        playAlertSound(); playAlertSound();
-        vibrate([300, 100, 300, 100, 300]);
-      } else if (diff <= 5 && diff > 2 && !alerted5) {
-        // WARNING — 5 or fewer away
-        alerted5 = true;
-        alertBox.style.display = 'block';
-        alertBox.classList.remove('urgent');
-        alertIcon.textContent = '⚠️';
-        alertTitle.textContent = 'Your number is almost up!';
-        alertSub.textContent = 'Please make your way to the meat counter';
-        playAlertSound();
-        vibrate([200, 100, 200]);
-      }
-
-      // If now serving has passed their number, show expired message
-      if (nowNum >= myNum && nowNum > 0) {
-        localStorage.removeItem('myTicket');
-        document.getElementById('ticketContent').style.display = 'none';
-        document.getElementById('expiredBox').style.display = 'block';
-      }
+      handleNowServing(nowNum, numStr);
     });
 
-    // Also listen for counter reset — if ticketCounter is null/0, clear saved ticket
+    db.ref('meat/current').on('value', snap => {
+      const data = snap.val();
+      const nowNum = data && data.number ? parseInt(data.number) : 0;
+      handleNowServing(nowNum, numStr);
+    });
+
+    // Also listen for counter reset
     db.ref('meat/ticketCounter').on('value', snap => {
       const val = snap.val();
       if (!val || val === 0) {
