@@ -147,6 +147,44 @@
     font-size: 18px;
   }
 
+  .alert-box {
+    display: none;
+    background: #fff3cd;
+    border: 2px solid #f5a623;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-top: 14px;
+    text-align: center;
+    animation: alertPulse 1s infinite alternate;
+  }
+
+  .alert-box.urgent {
+    background: #ffe0e0;
+    border-color: #e8431a;
+    animation: alertPulse 0.5s infinite alternate;
+  }
+
+  @keyframes alertPulse {
+    from { transform: scale(1); box-shadow: none; }
+    to   { transform: scale(1.02); box-shadow: 0 0 20px rgba(245,166,35,0.4); }
+  }
+
+  .alert-box.urgent { }
+  @keyframes alertUrgent {
+    from { transform: scale(1); box-shadow: none; }
+    to   { transform: scale(1.03); box-shadow: 0 0 20px rgba(232,67,26,0.5); }
+  }
+
+  .alert-icon { font-size: 28px; }
+  .alert-title {
+    font-weight: 900;
+    font-size: 16px;
+    color: #c8820a;
+    margin: 4px 0 2px;
+  }
+  .alert-box.urgent .alert-title { color: #e8431a; }
+  .alert-sub { font-size: 13px; color: #666; }
+
   .error {
     color: #e8431a;
     font-size: 14px;
@@ -173,6 +211,11 @@
       <span id="ticketTime">—</span>
     </div>
     <div class="now-serving">Now serving: <span id="nowServing" style="color:#e8431a;font-weight:700;">—</span></div>
+    <div class="alert-box" id="alertBox">
+      <div class="alert-icon" id="alertIcon">⚠️</div>
+      <div class="alert-title" id="alertTitle">Your number is almost up!</div>
+      <div class="alert-sub" id="alertSub">Please make your way to the meat counter</div>
+    </div>
     <div class="footer-text">
       Please wait for your number to be called<br>
       Espere a que llamen su número<br>
@@ -208,13 +251,67 @@
     document.getElementById('loadingMsg').style.display = 'none';
     document.getElementById('ticketContent').style.display = 'block';
 
+    let alerted5 = false;
+    let alerted2 = false;
+
+    function playAlertSound() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [523, 659, 784].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = freq;
+          osc.type = 'sine';
+          gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.15);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.3);
+          osc.start(ctx.currentTime + i * 0.15);
+          osc.stop(ctx.currentTime + i * 0.15 + 0.3);
+        });
+      } catch(e) {}
+    }
+
+    function vibrate(pattern) {
+      if (navigator.vibrate) navigator.vibrate(pattern);
+    }
+
     // Listen for now serving from meat display
     db.ref('meat/nowServing').on('value', snap => {
       const data = snap.val();
       const nowNum = data && data.number ? parseInt(data.number) : 0;
       const myNum = parseInt(numStr);
+      const diff = myNum - nowNum;
+
       document.getElementById('nowServing').textContent =
         data && data.number ? data.number : '—';
+
+      const alertBox = document.getElementById('alertBox');
+      const alertTitle = document.getElementById('alertTitle');
+      const alertSub = document.getElementById('alertSub');
+      const alertIcon = document.getElementById('alertIcon');
+
+      if (diff <= 2 && diff > 0 && !alerted2) {
+        // URGENT — 2 or fewer away
+        alerted2 = true;
+        alertBox.style.display = 'block';
+        alertBox.classList.add('urgent');
+        alertIcon.textContent = '🚨';
+        alertTitle.textContent = 'Your turn is NOW!';
+        alertSub.textContent = 'Please come to the meat counter immediately';
+        playAlertSound(); playAlertSound();
+        vibrate([300, 100, 300, 100, 300]);
+      } else if (diff <= 5 && diff > 2 && !alerted5) {
+        // WARNING — 5 or fewer away
+        alerted5 = true;
+        alertBox.style.display = 'block';
+        alertBox.classList.remove('urgent');
+        alertIcon.textContent = '⚠️';
+        alertTitle.textContent = 'Your number is almost up!';
+        alertSub.textContent = 'Please make your way to the meat counter';
+        playAlertSound();
+        vibrate([200, 100, 200]);
+      }
 
       // If now serving has passed their number OR reset to 000, clear saved ticket
       if (nowNum >= myNum || nowNum === 0) {
