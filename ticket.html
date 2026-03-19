@@ -185,10 +185,64 @@
   .alert-box.urgent .alert-title { color: #e8431a; }
   .alert-sub { font-size: 13px; color: #666; }
 
-  .error {
+  .activate-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 16px;
+    padding: 14px;
+    background: #1a6b1f;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .activate-btn.active {
+    background: #f0fdf4;
+    color: #1a6b1f;
+    border: 2px solid #1a6b1f;
+  }
+
+  .expired-box {
+    display: none;
+    background: #fff0f0;
+    border: 2px solid #e8431a;
+    border-radius: 16px;
+    padding: 24px 20px;
+    text-align: center;
+    margin-top: 16px;
+  }
+
+  .expired-icon { font-size: 40px; margin-bottom: 8px; }
+  .expired-title {
+    font-weight: 900;
+    font-size: 18px;
     color: #e8431a;
-    font-size: 14px;
-    padding: 20px 0;
+    margin-bottom: 6px;
+  }
+  .expired-sub {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 16px;
+    line-height: 1.6;
+  }
+  .rescan-btn {
+    display: inline-block;
+    background: #e8431a;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 28px;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
   }
 </style>
 </head>
@@ -216,6 +270,9 @@
       <div class="alert-title" id="alertTitle">Your number is almost up!</div>
       <div class="alert-sub" id="alertSub">Please make your way to the meat counter</div>
     </div>
+    <button class="activate-btn" id="activateBtn" onclick="activateAlerts()">
+      🔔 Tap to enable sound alerts
+    </button>
     <div class="footer-text">
       Please wait for your number to be called<br>
       Espere a que llamen su número<br>
@@ -224,6 +281,15 @@
   </div>
   <div id="errorMsg" class="error" style="display:none;">
     Could not connect. Please try again.
+  </div>
+  <div class="expired-box" id="expiredBox">
+    <div class="expired-icon">⏰</div>
+    <div class="expired-title">Your number has expired!</div>
+    <div class="expired-sub">
+      Your number was already called.<br>
+      Please scan the QR code again to get a new number.
+    </div>
+    <button class="rescan-btn" onclick="getNewNumber()">Get a New Number</button>
   </div>
 </div>
 
@@ -244,6 +310,9 @@
 
   function pad(n) { return String(n).padStart(3, '0'); }
 
+  let alerted5 = false;
+  let alerted2 = false;
+
   function showTicket(numStr, dateStr, timeStr) {
     document.getElementById('myNumber').textContent = numStr;
     document.getElementById('ticketDate').textContent = dateStr;
@@ -251,30 +320,47 @@
     document.getElementById('loadingMsg').style.display = 'none';
     document.getElementById('ticketContent').style.display = 'block';
 
-    let alerted5 = false;
-    let alerted2 = false;
+  let audioCtx = null;
+  let alertsActive = false;
 
-    function playAlertSound() {
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        [523, 659, 784].forEach((freq, i) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.frequency.value = freq;
-          osc.type = 'sine';
-          gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.15);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.3);
-          osc.start(ctx.currentTime + i * 0.15);
-          osc.stop(ctx.currentTime + i * 0.15 + 0.3);
-        });
-      } catch(e) {}
-    }
+  function activateAlerts() {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Play a silent sound to unlock audio
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.1);
+    alertsActive = true;
+    const btn = document.getElementById('activateBtn');
+    btn.textContent = '✅ Sound alerts enabled!';
+    btn.classList.add('active');
+    btn.onclick = null;
+  }
 
-    function vibrate(pattern) {
-      if (navigator.vibrate) navigator.vibrate(pattern);
-    }
+  function playAlertSound() {
+    if (!alertsActive || !audioCtx) return;
+    try {
+      [523, 659, 784].forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = freq;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.4, audioCtx.currentTime + i * 0.18);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.18 + 0.35);
+        osc.start(audioCtx.currentTime + i * 0.18);
+        osc.stop(audioCtx.currentTime + i * 0.18 + 0.35);
+      });
+    } catch(e) {}
+  }
+
+  function vibrate(pattern) {
+    if (navigator.vibrate) navigator.vibrate(pattern);
+  }
 
     // Listen for now serving from meat display
     db.ref('meat/nowServing').on('value', snap => {
@@ -313,9 +399,11 @@
         vibrate([200, 100, 200]);
       }
 
-      // If now serving has passed their number OR reset to 000, clear saved ticket
-      if (nowNum >= myNum || nowNum === 0) {
+      // If now serving has passed their number, show expired message
+      if (nowNum >= myNum && nowNum > 0) {
         localStorage.removeItem('myTicket');
+        document.getElementById('ticketContent').style.display = 'none';
+        document.getElementById('expiredBox').style.display = 'block';
       }
     });
 
@@ -326,6 +414,16 @@
         localStorage.removeItem('myTicket');
       }
     });
+  }
+
+  function getNewNumber() {
+    localStorage.removeItem('myTicket');
+    document.getElementById('expiredBox').style.display = 'none';
+    document.getElementById('loadingMsg').style.display = 'block';
+    document.getElementById('loadingMsg').textContent = 'Getting your new number...';
+    alerted5 = false;
+    alerted2 = false;
+    getMyNumber();
   }
 
   async function getMyNumber() {
