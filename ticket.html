@@ -312,20 +312,12 @@
 
   let alerted5 = false;
   let alerted2 = false;
-
-  function showTicket(numStr, dateStr, timeStr) {
-    document.getElementById('myNumber').textContent = numStr;
-    document.getElementById('ticketDate').textContent = dateStr;
-    document.getElementById('ticketTime').textContent = timeStr;
-    document.getElementById('loadingMsg').style.display = 'none';
-    document.getElementById('ticketContent').style.display = 'block';
-
   let audioCtx = null;
   let alertsActive = false;
+  let myNumStr = null;
 
   function activateAlerts() {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    // Play a silent sound to unlock audio
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain);
@@ -362,76 +354,74 @@
     if (navigator.vibrate) navigator.vibrate(pattern);
   }
 
-  function handleNowServing(nowNum, numStr) {
-    const myNum = parseInt(numStr);
+  function handleNowServing(nowNum) {
+    if (!myNumStr) return;
+    const myNum = parseInt(myNumStr);
     const diff = myNum - nowNum;
 
-    // Update display
     document.getElementById('nowServing').textContent =
       nowNum > 0 ? String(nowNum).padStart(3, '0') : '—';
 
-    const alertBox = document.getElementById('alertBox');
-    const alertTitle = document.getElementById('alertTitle');
-    const alertSub = document.getElementById('alertSub');
-    const alertIcon = document.getElementById('alertIcon');
-
     if (nowNum >= myNum && nowNum > 0) {
-      // EXPIRED — their number was already called
+      // EXPIRED
       localStorage.removeItem('myTicket');
       document.getElementById('ticketContent').style.display = 'none';
       document.getElementById('expiredBox').style.display = 'block';
     } else if (diff <= 2 && diff > 0 && !alerted2) {
-      // URGENT — 2 or fewer away
       alerted2 = true;
+      const alertBox = document.getElementById('alertBox');
       alertBox.style.display = 'block';
       alertBox.classList.add('urgent');
-      alertIcon.textContent = '🚨';
-      alertTitle.textContent = 'Your turn is NOW!';
-      alertSub.textContent = 'Please come to the meat counter immediately';
+      document.getElementById('alertIcon').textContent = '🚨';
+      document.getElementById('alertTitle').textContent = 'Your turn is NOW!';
+      document.getElementById('alertSub').textContent = 'Please come to the meat counter immediately';
       playAlertSound(); playAlertSound();
       vibrate([300, 100, 300, 100, 300]);
     } else if (diff <= 5 && diff > 2 && !alerted5) {
-      // WARNING — 5 or fewer away
       alerted5 = true;
+      const alertBox = document.getElementById('alertBox');
       alertBox.style.display = 'block';
       alertBox.classList.remove('urgent');
-      alertIcon.textContent = '⚠️';
-      alertTitle.textContent = 'Your number is almost up!';
-      alertSub.textContent = 'Please make your way to the meat counter';
+      document.getElementById('alertIcon').textContent = '⚠️';
+      document.getElementById('alertTitle').textContent = 'Your number is almost up!';
+      document.getElementById('alertSub').textContent = 'Please make your way to the meat counter';
       playAlertSound();
       vibrate([200, 100, 200]);
     }
   }
 
-    // Listen for now serving from BOTH displays
-    db.ref('meat/nowServing').on('value', snap => {
-      const data = snap.val();
-      const nowNum = data && data.number ? parseInt(data.number) : 0;
-      handleNowServing(nowNum, numStr);
-    });
+  // Listen ONLY to meat department display (nowServing)
+  db.ref('meat/nowServing').on('value', snap => {
+    const data = snap.val();
+    handleNowServing(data && data.number ? parseInt(data.number) : 0);
+  });
 
-    db.ref('meat/current').on('value', snap => {
-      const data = snap.val();
-      const nowNum = data && data.number ? parseInt(data.number) : 0;
-      handleNowServing(nowNum, numStr);
-    });
+  db.ref('meat/ticketCounter').on('value', snap => {
+    const val = snap.val();
+    if (!val || val === 0) localStorage.removeItem('myTicket');
+  });
 
-    // Also listen for counter reset
-    db.ref('meat/ticketCounter').on('value', snap => {
-      const val = snap.val();
-      if (!val || val === 0) {
-        localStorage.removeItem('myTicket');
-      }
-    });
+  function showTicket(numStr, dateStr, timeStr) {
+    myNumStr = numStr;
+    alerted5 = false;
+    alerted2 = false;
+    document.getElementById('myNumber').textContent = numStr;
+    document.getElementById('ticketDate').textContent = dateStr;
+    document.getElementById('ticketTime').textContent = timeStr;
+    document.getElementById('loadingMsg').style.display = 'none';
+    document.getElementById('expiredBox').style.display = 'none';
+    document.getElementById('ticketContent').style.display = 'block';
   }
 
   function getNewNumber() {
-    localStorage.removeItem('myTicket');
-    document.getElementById('expiredBox').style.display = 'none';
-    document.getElementById('loadingMsg').style.display = 'block';
-    document.getElementById('loadingMsg').textContent = 'Getting your new number...';
+    myNumStr = null;
     alerted5 = false;
     alerted2 = false;
+    localStorage.removeItem('myTicket');
+    document.getElementById('expiredBox').style.display = 'none';
+    document.getElementById('alertBox').style.display = 'none';
+    document.getElementById('loadingMsg').style.display = 'block';
+    document.getElementById('loadingMsg').textContent = 'Getting your new number...';
     getMyNumber();
   }
 
