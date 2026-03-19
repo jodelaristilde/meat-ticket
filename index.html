@@ -843,7 +843,7 @@
     document.getElementById('statusText').textContent = 'Tap anywhere or press a button';
 
     // Reset Firebase counters
-    db.ref('meat/ticketCounter').set(0);
+    db.ref('meat/ticketCounter').remove();
     db.ref('meat/current').set({ number: '000', updated: Date.now() });
 
     closeConfirm();

@@ -216,8 +216,16 @@
       document.getElementById('nowServing').textContent =
         data && data.number ? data.number : '—';
 
-      // If now serving has passed their number, clear saved ticket so next scan gets a new number
-      if (nowNum >= myNum) {
+      // If now serving has passed their number OR reset to 000, clear saved ticket
+      if (nowNum >= myNum || nowNum === 0) {
+        localStorage.removeItem('myTicket');
+      }
+    });
+
+    // Also listen for counter reset — if ticketCounter is null/0, clear saved ticket
+    db.ref('meat/ticketCounter').on('value', snap => {
+      const val = snap.val();
+      if (!val || val === 0) {
         localStorage.removeItem('myTicket');
       }
     });
@@ -225,12 +233,22 @@
 
   async function getMyNumber() {
     try {
+      // Check current Firebase counter first
+      const counterSnap = await db.ref('meat/ticketCounter').once('value');
+      const currentCounter = counterSnap.val() || 0;
+
       // Check if customer already has a valid ticket saved
       const saved = localStorage.getItem('myTicket');
       if (saved) {
         const t = JSON.parse(saved);
-        showTicket(t.num, t.date, t.time);
-        return;
+        // Only use saved ticket if counter hasn't been reset below their number
+        if (currentCounter >= parseInt(t.num)) {
+          showTicket(t.num, t.date, t.time);
+          return;
+        } else {
+          // Counter was reset — clear old ticket
+          localStorage.removeItem('myTicket');
+        }
       }
 
       const queueRef = db.ref('meat/ticketCounter');
