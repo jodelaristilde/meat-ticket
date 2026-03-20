@@ -338,52 +338,55 @@
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       alertsActive = true;
     }
-    // Play one burst of saw sound
     const ctx = audioCtx;
     try {
       const start = ctx.currentTime;
+      const dur = 0.22;
 
-      const osc1 = ctx.createOscillator();
+      // Layer 1 — deep motor rumble
+      const o1 = ctx.createOscillator();
       const g1 = ctx.createGain();
-      osc1.type = 'sawtooth';
-      osc1.frequency.setValueAtTime(80, start);
-      osc1.frequency.exponentialRampToValueAtTime(400, start + 0.18);
-      osc1.frequency.exponentialRampToValueAtTime(80, start + 0.22);
-      g1.gain.setValueAtTime(0.001, start);
-      g1.gain.linearRampToValueAtTime(1.0, start + 0.02);
-      g1.gain.setValueAtTime(1.0, start + 0.2);
-      g1.gain.exponentialRampToValueAtTime(0.001, start + 0.23);
-      osc1.connect(g1); g1.connect(ctx.destination);
-      osc1.start(start); osc1.stop(start + 0.23);
+      o1.type = 'sawtooth';
+      o1.frequency.setValueAtTime(55, start);
+      o1.frequency.linearRampToValueAtTime(110, start + dur * 0.7);
+      o1.frequency.linearRampToValueAtTime(55, start + dur);
+      g1.gain.setValueAtTime(1.0, start);
+      o1.connect(g1); g1.connect(ctx.destination);
+      o1.start(start); o1.stop(start + dur);
 
-      const osc2 = ctx.createOscillator();
+      // Layer 2 — mid buzz
+      const o2 = ctx.createOscillator();
       const g2 = ctx.createGain();
-      osc2.type = 'square';
-      osc2.frequency.setValueAtTime(1200, start);
-      osc2.frequency.exponentialRampToValueAtTime(2400, start + 0.18);
-      g2.gain.setValueAtTime(0.001, start);
-      g2.gain.linearRampToValueAtTime(0.6, start + 0.02);
-      g2.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
-      osc2.connect(g2); g2.connect(ctx.destination);
-      osc2.start(start); osc2.stop(start + 0.22);
+      o2.type = 'sawtooth';
+      o2.frequency.setValueAtTime(220, start);
+      o2.frequency.linearRampToValueAtTime(440, start + dur * 0.7);
+      o2.frequency.linearRampToValueAtTime(220, start + dur);
+      g2.gain.setValueAtTime(0.8, start);
+      o2.connect(g2); g2.connect(ctx.destination);
+      o2.start(start); o2.stop(start + dur);
 
-      const bufferSize = Math.floor(ctx.sampleRate * 0.22);
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
-      const noise = ctx.createBufferSource();
-      const noiseFilter = ctx.createBiquadFilter();
-      const noiseGain = ctx.createGain();
-      noise.buffer = buffer;
-      noiseFilter.type = 'bandpass';
-      noiseFilter.frequency.value = 1000;
-      noiseFilter.Q.value = 0.8;
-      noiseGain.gain.setValueAtTime(0.5, start);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
-      noise.connect(noiseFilter);
-      noiseFilter.connect(noiseGain);
-      noiseGain.connect(ctx.destination);
-      noise.start(start); noise.stop(start + 0.22);
+      // Layer 3 — high whine
+      const o3 = ctx.createOscillator();
+      const g3 = ctx.createGain();
+      o3.type = 'square';
+      o3.frequency.setValueAtTime(880, start);
+      o3.frequency.linearRampToValueAtTime(1760, start + dur * 0.7);
+      o3.frequency.linearRampToValueAtTime(880, start + dur);
+      g3.gain.setValueAtTime(0.5, start);
+      o3.connect(g3); g3.connect(ctx.destination);
+      o3.start(start); o3.stop(start + dur);
+
+      // Layer 4 — screaming blade harmonic
+      const o4 = ctx.createOscillator();
+      const g4 = ctx.createGain();
+      o4.type = 'sawtooth';
+      o4.frequency.setValueAtTime(1320, start);
+      o4.frequency.linearRampToValueAtTime(2640, start + dur * 0.5);
+      o4.frequency.linearRampToValueAtTime(1320, start + dur);
+      g4.gain.setValueAtTime(0.4, start);
+      o4.connect(g4); g4.connect(ctx.destination);
+      o4.start(start); o4.stop(start + dur);
+
     } catch(e) {}
   }
 
