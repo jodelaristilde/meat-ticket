@@ -246,7 +246,14 @@
       <div class="alert-title" id="alertTitle">Your number is almost up!</div>
       <div class="alert-sub" id="alertSub">Please make your way to the meat counter</div>
     </div>
+    <button style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:16px;padding:14px;background:#1a6b1f;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;" id="activateBtn" onclick="unlockAudioManual()">
+      🔔 Tap to enable sound alerts
+    </button>
     <div class="footer-text">
+      Please wait for your number to be called<br>
+      Espere a que llamen su número<br>
+      Tanpri tann yo rele nimewo ou
+    </div>
       Please wait for your number to be called<br>
       Espere a que llamen su número<br>
       Tanpri tann yo rele nimewo ou
@@ -289,7 +296,6 @@
   let alertsActive = false;
   let myNumStr = null;
 
-  // Unlock audio on first tap anywhere
   function unlockAudio() {
     if (alertsActive) return;
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -302,6 +308,19 @@
     osc.stop(audioCtx.currentTime + 0.01);
     alertsActive = true;
   }
+
+  function unlockAudioManual() {
+    unlockAudio();
+    const btn = document.getElementById('activateBtn');
+    if (btn) {
+      btn.textContent = '✅ Sound alerts enabled!';
+      btn.style.background = '#f0fdf4';
+      btn.style.color = '#1a6b1f';
+      btn.style.border = '2px solid #1a6b1f';
+      btn.onclick = null;
+    }
+  }
+
   document.addEventListener('touchstart', unlockAudio, { once: true });
   document.addEventListener('click', unlockAudio, { once: true });
 
@@ -313,44 +332,69 @@
     try {
       const ctx = audioCtx;
       const masterGain = ctx.createGain();
-      masterGain.gain.setValueAtTime(1.5, ctx.currentTime);
+      masterGain.gain.setValueAtTime(2.0, ctx.currentTime);
       masterGain.connect(ctx.destination);
 
       if (urgent) {
-        // LOUD CHAINSAW buzz — 3 bursts
-        for (let r = 0; r < 3; r++) {
-          const start = ctx.currentTime + r * 0.5;
+        // MEAT CUTTING SAW — industrial buzz with speed ramp up
+        for (let r = 0; r < 4; r++) {
+          const start = ctx.currentTime + r * 0.4;
+
+          // Main saw blade tone — low rumble ramps up like a saw starting
           const osc1 = ctx.createOscillator();
           const g1 = ctx.createGain();
           osc1.type = 'sawtooth';
-          osc1.frequency.setValueAtTime(80, start);
-          osc1.frequency.linearRampToValueAtTime(140, start + 0.4);
-          g1.gain.setValueAtTime(2.0, start);
-          g1.gain.exponentialRampToValueAtTime(0.001, start + 0.45);
+          osc1.frequency.setValueAtTime(40 + r * 10, start);
+          osc1.frequency.exponentialRampToValueAtTime(180 + r * 20, start + 0.35);
+          g1.gain.setValueAtTime(0.001, start);
+          g1.gain.linearRampToValueAtTime(2.5, start + 0.1);
+          g1.gain.exponentialRampToValueAtTime(0.001, start + 0.38);
           osc1.connect(g1); g1.connect(masterGain);
-          osc1.start(start); osc1.stop(start + 0.45);
+          osc1.start(start); osc1.stop(start + 0.38);
 
+          // High frequency whine — blade spinning fast
           const osc2 = ctx.createOscillator();
           const g2 = ctx.createGain();
           osc2.type = 'square';
-          osc2.frequency.setValueAtTime(160, start);
-          g2.gain.setValueAtTime(1.0, start);
-          g2.gain.exponentialRampToValueAtTime(0.001, start + 0.45);
+          osc2.frequency.setValueAtTime(600, start);
+          osc2.frequency.exponentialRampToValueAtTime(1200, start + 0.35);
+          g2.gain.setValueAtTime(0.001, start);
+          g2.gain.linearRampToValueAtTime(1.2, start + 0.1);
+          g2.gain.exponentialRampToValueAtTime(0.001, start + 0.38);
           osc2.connect(g2); g2.connect(masterGain);
-          osc2.start(start); osc2.stop(start + 0.45);
+          osc2.start(start); osc2.stop(start + 0.38);
+
+          // Noise layer — grinding metal sound
+          const bufferSize = ctx.sampleRate * 0.35;
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.4;
+          const noise = ctx.createBufferSource();
+          const noiseFilter = ctx.createBiquadFilter();
+          const noiseGain = ctx.createGain();
+          noise.buffer = buffer;
+          noiseFilter.type = 'bandpass';
+          noiseFilter.frequency.value = 800;
+          noiseFilter.Q.value = 0.5;
+          noiseGain.gain.setValueAtTime(0.8, start);
+          noiseGain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+          noise.connect(noiseFilter);
+          noiseFilter.connect(noiseGain);
+          noiseGain.connect(masterGain);
+          noise.start(start); noise.stop(start + 0.35);
         }
       } else {
-        // WARNING — 3 loud sharp beeps
-        [0, 0.35, 0.7].forEach(delay => {
+        // WARNING — 3 loud industrial beeps
+        [0, 0.4, 0.8].forEach(delay => {
           const osc = ctx.createOscillator();
           const g = ctx.createGain();
           osc.type = 'square';
-          osc.frequency.setValueAtTime(900, ctx.currentTime + delay);
-          g.gain.setValueAtTime(1.5, ctx.currentTime + delay);
-          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.28);
+          osc.frequency.setValueAtTime(880, ctx.currentTime + delay);
+          g.gain.setValueAtTime(2.0, ctx.currentTime + delay);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.3);
           osc.connect(g); g.connect(masterGain);
           osc.start(ctx.currentTime + delay);
-          osc.stop(ctx.currentTime + delay + 0.28);
+          osc.stop(ctx.currentTime + delay + 0.3);
         });
       }
     } catch(e) {}
