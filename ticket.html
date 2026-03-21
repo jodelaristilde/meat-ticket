@@ -11,266 +11,121 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:100%; height:100%; font-family:'Inter',sans-serif; background:#111; overflow:hidden; }
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  .page { display:none; position:fixed; inset:0; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; }
+  .page.active { display:flex; }
 
-  body {
-    background: #111;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    font-family: 'Inter', sans-serif;
-    padding: 20px;
-  }
+  /* TICKET PAGE */
+  #pageTicket { background:#111; }
+  .ticket { background:#fff; border-radius:20px; width:100%; max-width:360px; padding:32px 24px 24px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+  .store { font-family:'Bebas Neue',sans-serif; font-size:38px; letter-spacing:0.15em; color:#111; line-height:1; }
+  .dept { font-size:12px; font-weight:700; letter-spacing:0.3em; color:#777; text-transform:uppercase; margin-top:2px; margin-bottom:20px; }
+  .divider { border:none; border-top:1px solid #eee; margin:0 0 20px; }
+  .status-badge { display:inline-flex; align-items:center; gap:6px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:20px; padding:4px 12px; font-size:12px; font-weight:600; color:#16a34a; margin-bottom:16px; }
+  .status-dot { width:7px; height:7px; border-radius:50%; background:#16a34a; animation:blink 2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .your-number-label { font-size:12px; font-weight:700; letter-spacing:0.25em; color:#777; text-transform:uppercase; margin-bottom:4px; }
+  .number { font-family:'Bebas Neue',sans-serif; font-size:120px; line-height:1; color:#111; letter-spacing:0.04em; transition:color 0.3s; }
+  .number.red { color:#e8431a; }
+  .datetime { display:flex; justify-content:space-between; font-size:12px; color:#777; margin:6px 0 16px; padding:0 4px; }
+  .now-serving { font-size:15px; font-weight:600; color:#555; margin-bottom:12px; }
+  .now-serving span { color:#e8431a; font-weight:800; font-size:17px; }
+  .activate-btn { width:100%; margin-top:14px; padding:13px; background:#1a6b1f; color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; font-family:'Inter',sans-serif; }
+  .activate-btn.done { background:#f0fdf4; color:#1a6b1f; border:2px solid #1a6b1f; }
+  .footer-text { font-size:11px; color:#888; line-height:2; border-top:1px solid #eee; padding-top:14px; margin-top:14px; }
 
-  .ticket {
-    background: #fff;
-    border-radius: 16px;
-    width: 100%;
-    max-width: 340px;
-    padding: 32px 24px 28px;
-    text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-  }
+  /* ALERT OVERLAY — full screen red */
+  .alert-overlay { display:none; position:fixed; inset:0; background:#e8431a; flex-direction:column; align-items:center; justify-content:center; z-index:999; cursor:pointer; animation:flashRed 0.5s infinite alternate; }
+  .alert-overlay.active { display:flex; }
+  @keyframes flashRed { from{background:#e8431a} to{background:#b22d0f} }
+  .alert-overlay-icon { font-size:80px; margin-bottom:20px; }
+  .alert-overlay-title { font-family:'Bebas Neue',sans-serif; font-size:52px; color:#fff; letter-spacing:0.08em; margin-bottom:10px; }
+  .alert-overlay-sub { font-size:18px; color:rgba(255,255,255,0.85); margin-bottom:40px; line-height:1.6; }
+  .alert-overlay-tap { font-size:14px; color:rgba(255,255,255,0.6); letter-spacing:0.1em; text-transform:uppercase; animation:pulse 1.2s infinite alternate; }
+  @keyframes pulse { from{opacity:0.4} to{opacity:1} }
 
-  .store {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 36px;
-    letter-spacing: 0.15em;
-    color: #111;
-    line-height: 1;
-  }
+  /* EXPIRED PAGE */
+  #pageExpired { background:#111; }
+  .expired-card { background:#fff; border-radius:20px; width:100%; max-width:360px; padding:40px 28px; text-align:center; }
+  .expired-icon { font-size:60px; margin-bottom:16px; }
+  .expired-title { font-family:'Bebas Neue',sans-serif; font-size:36px; color:#e8431a; margin-bottom:8px; letter-spacing:0.05em; }
+  .expired-sub { font-size:14px; color:#666; margin-bottom:28px; line-height:1.7; }
+  .expired-btns { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .btn-yes { padding:16px; background:#1a6b1f; color:#fff; border:none; border-radius:12px; font-size:16px; font-weight:900; cursor:pointer; font-family:'Inter',sans-serif; }
+  .btn-no { padding:16px; background:transparent; color:#555; border:1px solid #ddd; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; font-family:'Inter',sans-serif; }
 
-  .dept {
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.3em;
-    color: #555;
-    text-transform: uppercase;
-    margin-top: 2px;
-    margin-bottom: 24px;
-  }
+  /* THANK YOU PAGE */
+  #pageThankyou { background:#1a6b1f; }
+  .thankyou-icon { font-size:80px; margin-bottom:24px; }
+  .thankyou-title { font-family:'Bebas Neue',sans-serif; font-size:52px; color:#fff; letter-spacing:0.08em; margin-bottom:12px; }
+  .thankyou-sub { font-size:18px; color:rgba(255,255,255,0.8); line-height:1.6; }
+  .thankyou-store { font-family:'Bebas Neue',sans-serif; font-size:28px; color:rgba(255,255,255,0.4); letter-spacing:0.15em; margin-top:32px; }
 
-  .divider {
-    border: none;
-    border-top: 1px solid #eee;
-    margin: 0 0 24px;
-  }
-
-  .your-number-label {
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.25em;
-    color: #555;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-
-  .number {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 120px;
-    line-height: 1;
-    color: #111;
-    letter-spacing: 0.04em;
-  }
-
-  .datetime {
-    display: flex;
-    justify-content: space-between;
-    font-size: 13px;
-    color: #555;
-    margin: 8px 0 20px;
-    padding: 0 4px;
-  }
-
-  .footer-text {
-    font-size: 12px;
-    color: #666;
-    line-height: 2;
-    border-top: 1px solid #eee;
-    padding-top: 16px;
-  }
-
-  /* Loading state */
-  .loading {
-    font-size: 16px;
-    color: #999;
-    padding: 40px 0;
-    animation: pulse 1.2s infinite alternate;
-  }
-
-  @keyframes pulse {
-    from { opacity: 0.4; }
-    to   { opacity: 1; }
-  }
-
-  /* Status badge */
-  .status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: #f0fdf4;
-    border: 1px solid #bbf7d0;
-    border-radius: 20px;
-    padding: 4px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #16a34a;
-    margin-bottom: 20px;
-  }
-
-  .status-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #16a34a;
-    animation: blink 2s infinite;
-  }
-
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.3; }
-  }
-
-  .now-serving {
-    font-size: 16px;
-    font-weight: 600;
-    color: #555;
-    margin-top: 16px;
-  }
-
-  .now-serving span {
-    color: #e8431a;
-    font-weight: 800;
-    font-size: 18px;
-  }
-
-  .alert-box {
-    display: none;
-    background: #fff3cd;
-    border: 2px solid #f5a623;
-    border-radius: 12px;
-    padding: 14px 16px;
-    margin-top: 14px;
-    text-align: center;
-    animation: alertPulse 1s infinite alternate;
-  }
-
-  .alert-box.urgent {
-    background: #ffe0e0;
-    border-color: #e8431a;
-    animation: alertPulse 0.5s infinite alternate;
-  }
-
-  @keyframes alertPulse {
-    from { transform: scale(1); box-shadow: none; }
-    to   { transform: scale(1.02); box-shadow: 0 0 20px rgba(245,166,35,0.4); }
-  }
-
-  .alert-box.urgent { }
-  @keyframes alertUrgent {
-    from { transform: scale(1); box-shadow: none; }
-    to   { transform: scale(1.03); box-shadow: 0 0 20px rgba(232,67,26,0.5); }
-  }
-
-  .alert-icon { font-size: 28px; }
-  .alert-title {
-    font-weight: 900;
-    font-size: 16px;
-    color: #c8820a;
-    margin: 4px 0 2px;
-  }
-  .alert-box.urgent .alert-title { color: #e8431a; }
-  .alert-sub { font-size: 13px; color: #666; }
-
-  .expired-box {
-    display: none;
-    background: #fff0f0;
-    border: 2px solid #e8431a;
-    border-radius: 16px;
-    padding: 24px 20px;
-    text-align: center;
-    margin-top: 16px;
-  }
-
-  .expired-icon { font-size: 40px; margin-bottom: 8px; }
-  .expired-title {
-    font-weight: 900;
-    font-size: 18px;
-    color: #e8431a;
-    margin-bottom: 6px;
-  }
-  .expired-sub {
-    font-size: 13px;
-    color: #666;
-    margin-bottom: 16px;
-    line-height: 1.6;
-  }
-  .rescan-btn {
-    display: inline-block;
-    background: #e8431a;
-    color: #fff;
-    border: none;
-    border-radius: 12px;
-    padding: 12px 28px;
-    font-size: 15px;
-    font-weight: 800;
-    cursor: pointer;
-    font-family: 'Inter', sans-serif;
-  }
+  /* LOADING */
+  #pageLoading { background:#111; }
+  .loading-text { font-size:16px; color:#999; animation:pulse 1.2s infinite alternate; }
+  .error-text { font-size:14px; color:#e8431a; }
 </style>
 </head>
 <body>
 
-<div class="ticket" id="ticketCard">
-  <div class="store">FOODFAIR</div>
-  <div class="dept">Meat Department</div>
-  <hr class="divider">
-  <div class="loading" id="loadingMsg">Getting your number...</div>
-  <div id="ticketContent" style="display:none;">
-    <div class="status-badge">
-      <div class="status-dot"></div>
-      Digital Ticket
-    </div>
+<!-- LOADING -->
+<div class="page active" id="pageLoading">
+  <div class="loading-text">Getting your number...</div>
+</div>
+
+<!-- TICKET -->
+<div class="page" id="pageTicket">
+  <div class="ticket">
+    <div class="store">FOODFAIR</div>
+    <div class="dept">Meat Department</div>
+    <hr class="divider">
+    <div class="status-badge"><div class="status-dot"></div>Digital Ticket</div>
     <div class="your-number-label">Your Number</div>
     <div class="number" id="myNumber">—</div>
     <div class="datetime">
       <span id="ticketDate">—</span>
       <span id="ticketTime">—</span>
     </div>
-    <div class="now-serving">Now serving: <span id="nowServing" style="color:#e8431a;font-weight:700;">—</span></div>
-    <div class="alert-box" id="alertBox">
-      <div class="alert-icon" id="alertIcon">⚠️</div>
-      <div class="alert-title" id="alertTitle">Your number is almost up!</div>
-      <div class="alert-sub" id="alertSub">Please make your way to the meat counter</div>
-    </div>
-    <button style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:16px;padding:14px;background:#1a6b1f;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;" id="activateBtn" onclick="unlockAudioManual()">
-      🔔 Tap to enable sound alerts
-    </button>
+    <div class="now-serving">Now serving: <span id="nowServing">—</span></div>
     <div class="footer-text">
       Please wait for your number to be called<br>
       Espere a que llamen su número<br>
       Tanpri tann yo rele nimewo ou
     </div>
-      Please wait for your number to be called<br>
-      Espere a que llamen su número<br>
-      Tanpri tann yo rele nimewo ou
-    </div>
   </div>
-  <div id="errorMsg" class="error" style="display:none;">
-    Could not connect. Please try again.
-  </div>
-  <div class="expired-box" id="expiredBox">
+</div>
+
+<!-- ALERT OVERLAY — tap anywhere to silence -->
+<div class="alert-overlay" id="alertOverlay" onclick="silenceAlert()">
+  <div class="alert-overlay-icon">🚨</div>
+  <div class="alert-overlay-title">YOUR TURN IS NOW!</div>
+  <div class="alert-overlay-sub">Please come to the<br>meat counter immediately</div>
+  <div class="alert-overlay-tap">Tap anywhere to silence</div>
+</div>
+
+<!-- EXPIRED -->
+<div class="page" id="pageExpired">
+  <div class="expired-card">
     <div class="expired-icon">⏰</div>
-    <div class="expired-title">Your number has expired!</div>
-    <div class="expired-sub">
-      Your number was already called.<br>
-      Please scan the QR code again to get a new number.
+    <div class="expired-title">Number Expired</div>
+    <div class="expired-sub">Your number was already called.<br>Would you like a new number?</div>
+    <div class="expired-btns">
+      <button class="btn-yes" onclick="getNewNumber()">Yes Please</button>
+      <button class="btn-no" onclick="showThankyou()">No Thank You</button>
     </div>
-    <button class="rescan-btn" onclick="getNewNumber()">Get a New Number</button>
   </div>
+</div>
+
+<!-- THANK YOU -->
+<div class="page" id="pageThankyou">
+  <div class="thankyou-icon">🛒</div>
+  <div class="thankyou-title">Thank You!</div>
+  <div class="thankyou-sub">Thank you for shopping at<br>FoodFair Supermarket!</div>
+  <div class="thankyou-store">FOODFAIR SUPERMARKET</div>
 </div>
 
 <script>
@@ -288,275 +143,164 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  function pad(n) { return String(n).padStart(3, '0'); }
+  function pad(n) { return String(n).padStart(3,'0'); }
 
-  let alerted5 = false;
-  let alerted2 = false;
-  let audioCtx = null;
-  let alertsActive = false;
-  let myNumStr = null;
+  let alerted5=false, alerted2=false, myNumStr=null, sawInterval=null;
 
-  function unlockAudio() {
-    if (alertsActive) return;
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
-    osc.start(audioCtx.currentTime);
-    osc.stop(audioCtx.currentTime + 0.01);
-    alertsActive = true;
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
   }
 
-  function unlockAudioManual() {
-    unlockAudio();
-    const btn = document.getElementById('activateBtn');
-    if (btn) {
-      btn.textContent = '✅ Sound alerts enabled!';
-      btn.style.background = '#f0fdf4';
-      btn.style.color = '#1a6b1f';
-      btn.style.border = '2px solid #1a6b1f';
-      btn.onclick = null;
-    }
+  let speechInterval = null;
+
+  function stopSpeech() {
+    if (speechInterval) { clearInterval(speechInterval); speechInterval = null; }
+    window.speechSynthesis.cancel();
   }
 
-  document.addEventListener('touchstart', unlockAudio, { once: true });
-  document.addEventListener('click', unlockAudio, { once: true });
-
-  let sawInterval = null;
-
-  function stopSaw() {
-    if (sawInterval) {
-      clearInterval(sawInterval);
-      sawInterval = null;
-    }
-  }
-
-  function playSawLoop() {
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      alertsActive = true;
-    }
-    const ctx = audioCtx;
-    try {
-      const start = ctx.currentTime;
-      const dur = 0.22;
-
-      // Layer 1 — deep motor rumble
-      const o1 = ctx.createOscillator();
-      const g1 = ctx.createGain();
-      o1.type = 'sawtooth';
-      o1.frequency.setValueAtTime(55, start);
-      o1.frequency.linearRampToValueAtTime(110, start + dur * 0.7);
-      o1.frequency.linearRampToValueAtTime(55, start + dur);
-      g1.gain.setValueAtTime(1.0, start);
-      o1.connect(g1); g1.connect(ctx.destination);
-      o1.start(start); o1.stop(start + dur);
-
-      // Layer 2 — mid buzz
-      const o2 = ctx.createOscillator();
-      const g2 = ctx.createGain();
-      o2.type = 'sawtooth';
-      o2.frequency.setValueAtTime(220, start);
-      o2.frequency.linearRampToValueAtTime(440, start + dur * 0.7);
-      o2.frequency.linearRampToValueAtTime(220, start + dur);
-      g2.gain.setValueAtTime(0.8, start);
-      o2.connect(g2); g2.connect(ctx.destination);
-      o2.start(start); o2.stop(start + dur);
-
-      // Layer 3 — high whine
-      const o3 = ctx.createOscillator();
-      const g3 = ctx.createGain();
-      o3.type = 'square';
-      o3.frequency.setValueAtTime(880, start);
-      o3.frequency.linearRampToValueAtTime(1760, start + dur * 0.7);
-      o3.frequency.linearRampToValueAtTime(880, start + dur);
-      g3.gain.setValueAtTime(0.5, start);
-      o3.connect(g3); g3.connect(ctx.destination);
-      o3.start(start); o3.stop(start + dur);
-
-      // Layer 4 — screaming blade harmonic
-      const o4 = ctx.createOscillator();
-      const g4 = ctx.createGain();
-      o4.type = 'sawtooth';
-      o4.frequency.setValueAtTime(1320, start);
-      o4.frequency.linearRampToValueAtTime(2640, start + dur * 0.5);
-      o4.frequency.linearRampToValueAtTime(1320, start + dur);
-      g4.gain.setValueAtTime(0.4, start);
-      o4.connect(g4); g4.connect(ctx.destination);
-      o4.start(start); o4.stop(start + dur);
-
-    } catch(e) {}
-  }
-
-  function playAlertSound(urgent) {
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      alertsActive = true;
-    }
-    try {
-      const ctx = audioCtx;
-
-      if (urgent) {
-        // MEAT SAW — loops every 250ms until customer taps STOP
-        stopSaw();
-        playSawLoop();
-        sawInterval = setInterval(playSawLoop, 250);
-
-        // Show STOP button
-        const alertBox = document.getElementById('alertBox');
-        const existing = document.getElementById('stopSawBtn');
-        if (!existing) {
-          const stopBtn = document.createElement('button');
-          stopBtn.id = 'stopSawBtn';
-          stopBtn.textContent = '🛑 STOP ALARM';
-          stopBtn.style.cssText = 'margin-top:10px;width:100%;padding:12px;background:#e8431a;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:900;cursor:pointer;';
-          stopBtn.onclick = () => {
-            stopSaw();
-            stopBtn.style.display = 'none';
-          };
-          alertBox.appendChild(stopBtn);
-        } else {
-          existing.style.display = 'block';
+  function speakAlert() {
+    window.speechSynthesis.cancel();
+    const messages = [
+      { text: "Your turn is up! Please report to the meat department.", lang: "en-US" },
+      { text: "Es su turno. Por favor preséntese al departamento de carnes.", lang: "es-ES" },
+      { text: "Se ou turn. Tanpri prezante ou nan depatman vyann nan.", lang: "fr-FR" }
+    ];
+    let i = 0;
+    function speakNext() {
+      if (!speechInterval && i > 0) return; // stopped
+      const msg = new SpeechSynthesisUtterance(messages[i % messages.length].text);
+      msg.lang = messages[i % messages.length].lang;
+      msg.rate = 0.9;
+      msg.pitch = 1;
+      msg.volume = 1;
+      msg.onend = () => {
+        i++;
+        if (speechInterval !== null || i < messages.length * 2) {
+          setTimeout(speakNext, 600);
         }
-      } else {
-        // WARNING — 4 alternating beeps
-        [0, 0.4, 0.8, 1.2].forEach(delay => {
-          const osc = ctx.createOscillator();
-          const g = ctx.createGain();
-          osc.type = 'square';
-          osc.frequency.setValueAtTime(delay % 0.8 === 0 ? 1000 : 700, ctx.currentTime + delay);
-          g.gain.setValueAtTime(1.0, ctx.currentTime + delay);
-          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.3);
-          osc.connect(g); g.connect(ctx.destination);
-          osc.start(ctx.currentTime + delay);
-          osc.stop(ctx.currentTime + delay + 0.3);
-        });
-      }
-    } catch(e) {}
+      };
+      window.speechSynthesis.speak(msg);
+      i++;
+    }
+    speakNext();
+    // Keep looping every 12 seconds
+    speechInterval = setInterval(() => {
+      i = 0;
+      speakNext();
+    }, 12000);
   }
 
-  function vibrate(pattern) {
-    if (navigator.vibrate) navigator.vibrate(pattern);
+  function startSaw() { stopSaw(); speakAlert(); }
+  function stopSaw() { stopSpeech(); }
+
+  function playWarningBeeps() {
+    window.speechSynthesis.cancel();
+    const msgs = [
+      "Your number is almost up! Please make your way to the meat counter.",
+      "Su número está casi listo. Por favor diríjase al departamento de carnes.",
+      "Nimewo ou prèske rive. Tanpri ale nan depatman vyann nan."
+    ];
+    let i = 0;
+    function speakNext() {
+      if (i >= msgs.length) return;
+      const msg = new SpeechSynthesisUtterance(msgs[i]);
+      msg.lang = i === 0 ? "en-US" : i === 1 ? "es-ES" : "fr-FR";
+      msg.rate = 0.9; msg.volume = 1;
+      msg.onend = () => { i++; setTimeout(speakNext, 500); };
+      window.speechSynthesis.speak(msg);
+      i++;
+    }
+    speakNext();
+  }
+
+  function silenceAlert() {
+    stopSaw();
+    document.getElementById('alertOverlay').classList.remove('active');
+  }
+
+  function showThankyou() {
+    localStorage.removeItem('myTicket');
+    showPage('pageThankyou');
   }
 
   function handleNowServing(nowNum) {
     if (!myNumStr) return;
     const myNum = parseInt(myNumStr);
     const diff = myNum - nowNum;
-
-    document.getElementById('nowServing').textContent =
-      nowNum > 0 ? String(nowNum).padStart(3, '0') : '—';
+    document.getElementById('nowServing').textContent = nowNum > 0 ? pad(nowNum) : '—';
 
     if (nowNum >= myNum && nowNum > 0) {
-      // EXPIRED
+      stopSaw();
       localStorage.removeItem('myTicket');
-      document.getElementById('ticketContent').style.display = 'none';
-      document.getElementById('expiredBox').style.display = 'block';
+      silenceAlert();
+      showPage('pageExpired');
     } else if (diff <= 2 && diff > 0 && !alerted2) {
       alerted2 = true;
-      const alertBox = document.getElementById('alertBox');
-      alertBox.style.display = 'block';
-      alertBox.classList.add('urgent');
-      document.getElementById('alertIcon').textContent = '🚨';
-      document.getElementById('alertTitle').textContent = 'Your turn is NOW!';
-      document.getElementById('alertSub').textContent = 'Please come to the meat counter immediately';
-      playAlertSound(true); playAlertSound(true);
-      vibrate([300, 100, 300, 100, 300]);
+      document.getElementById('myNumber').classList.add('red');
+      document.getElementById('alertOverlay').classList.add('active');
+      if (navigator.vibrate) navigator.vibrate([400,100,400,100,400,100,400]);
+      startSaw();
     } else if (diff <= 5 && diff > 2 && !alerted5) {
       alerted5 = true;
-      const alertBox = document.getElementById('alertBox');
-      alertBox.style.display = 'block';
-      alertBox.classList.remove('urgent');
-      document.getElementById('alertIcon').textContent = '⚠️';
-      document.getElementById('alertTitle').textContent = 'Your number is almost up!';
-      document.getElementById('alertSub').textContent = 'Please make your way to the meat counter';
-      playAlertSound(false);
-      vibrate([200, 100, 200]);
+      document.getElementById('myNumber').classList.add('red');
+      if (navigator.vibrate) navigator.vibrate([200,100,200]);
+      playWarningBeeps();
     }
   }
 
-  // Listen ONLY to meat department display (nowServing)
   db.ref('meat/nowServing').on('value', snap => {
     const data = snap.val();
     handleNowServing(data && data.number ? parseInt(data.number) : 0);
   });
 
   db.ref('meat/ticketCounter').on('value', snap => {
-    const val = snap.val();
-    if (!val || val === 0) localStorage.removeItem('myTicket');
+    if (!snap.val() || snap.val() === 0) localStorage.removeItem('myTicket');
   });
 
   function showTicket(numStr, dateStr, timeStr) {
     myNumStr = numStr;
-    alerted5 = false;
-    alerted2 = false;
+    alerted5 = false; alerted2 = false;
     document.getElementById('myNumber').textContent = numStr;
+    document.getElementById('myNumber').classList.remove('red');
     document.getElementById('ticketDate').textContent = dateStr;
     document.getElementById('ticketTime').textContent = timeStr;
-    document.getElementById('loadingMsg').style.display = 'none';
-    document.getElementById('expiredBox').style.display = 'none';
-    document.getElementById('ticketContent').style.display = 'block';
+    showPage('pageTicket');
   }
 
   function getNewNumber() {
-    myNumStr = null;
-    alerted5 = false;
-    alerted2 = false;
+    myNumStr = null; alerted5 = false; alerted2 = false;
+    stopSaw();
     localStorage.removeItem('myTicket');
-    document.getElementById('expiredBox').style.display = 'none';
-    document.getElementById('alertBox').style.display = 'none';
-    document.getElementById('loadingMsg').style.display = 'block';
-    document.getElementById('loadingMsg').textContent = 'Getting your new number...';
+    showPage('pageLoading');
     getMyNumber();
   }
 
   async function getMyNumber() {
     try {
-      // Check current Firebase counter first
       const counterSnap = await db.ref('meat/ticketCounter').once('value');
       const currentCounter = counterSnap.val() || 0;
-
-      // Check if customer already has a valid ticket saved
       const saved = localStorage.getItem('myTicket');
       if (saved) {
         const t = JSON.parse(saved);
-        // Only use saved ticket if counter hasn't been reset below their number
-        if (currentCounter >= parseInt(t.num)) {
-          showTicket(t.num, t.date, t.time);
-          return;
-        } else {
-          // Counter was reset — clear old ticket
-          localStorage.removeItem('myTicket');
-        }
+        if (currentCounter >= parseInt(t.num)) { showTicket(t.num, t.date, t.time); return; }
+        localStorage.removeItem('myTicket');
       }
-
-      const queueRef = db.ref('meat/ticketCounter');
-
-      // Atomically increment the shared counter
-      const result = await queueRef.transaction(current => {
-        if (current === null) return 1;
-        if (current >= 999) return 1;
-        return current + 1;
+      const result = await db.ref('meat/ticketCounter').transaction(c => {
+        if (c === null) return 1;
+        if (c >= 999) return 1;
+        return c + 1;
       });
-
       if (result.committed) {
-        const myNum = result.snapshot.val();
-        const numStr = pad(myNum);
-
+        const numStr = pad(result.snapshot.val());
         const now = new Date();
-        const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-
-        // Save to localStorage so it persists even if browser is closed
-        localStorage.setItem('myTicket', JSON.stringify({ num: numStr, date: dateStr, time: timeStr }));
-
+        const dateStr = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+        const timeStr = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+        localStorage.setItem('myTicket', JSON.stringify({num:numStr,date:dateStr,time:timeStr}));
         showTicket(numStr, dateStr, timeStr);
       }
-    } catch (err) {
-      document.getElementById('loadingMsg').style.display = 'none';
-      document.getElementById('errorMsg').style.display = 'block';
+    } catch(err) {
+      document.getElementById('pageLoading').innerHTML = '<div class="error-text">Could not connect. Please try again.</div>';
     }
   }
 
