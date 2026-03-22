@@ -29,10 +29,10 @@
   .your-number-label { font-size:12px; font-weight:700; letter-spacing:0.25em; color:#777; text-transform:uppercase; margin-bottom:4px; }
   .number { font-family:'Bebas Neue',sans-serif; font-size:120px; line-height:1; color:#111; letter-spacing:0.04em; transition:color 0.3s; }
   .number.red { color:#e8431a; }
-  .datetime { display:flex; justify-content:space-between; font-size:12px; color:#777; margin:6px 0 16px; padding:0 4px; }
-  .now-serving { font-size:15px; font-weight:600; color:#555; margin-bottom:12px; }
-  .now-serving span { color:#e8431a; font-weight:800; font-size:17px; }
-  .footer-text { font-size:11px; color:#888; line-height:2; border-top:1px solid #eee; padding-top:14px; margin-top:14px; }
+  .datetime { display:flex; justify-content:space-between; font-size:12px; color:#111; font-weight:700; margin:6px 0 16px; padding:0 4px; }
+  .now-serving { font-size:22px; font-weight:700; color:#111; margin-bottom:12px; }
+  .now-serving span { color:#1a56db; font-weight:800; font-size:26px; }
+  .footer-text { font-size:11px; color:#111; font-weight:700; line-height:2; border-top:1px solid #eee; padding-top:14px; margin-top:14px; }
   .activate-btn { width:100%; margin-top:14px; padding:13px; background:#1a6b1f; color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; font-family:'Inter',sans-serif; }
   .activate-btn.done { background:#f0fdf4; color:#1a6b1f; border:2px solid #1a6b1f; pointer-events:none; }
 
@@ -146,3 +146,230 @@
   <div class="thankyou-dark">Spring Valley, NY 10977</div>
   <div class="thankyou-comeback">Please Come Again!</div>
 </div>
+
+<script>
+  // ── Firebase config ──────────────────────────────────────────────────
+  const firebaseConfig = {
+    apiKey: "AIzaSyD2YFgVWpyMbTnzJCiFpMnzfnEBjEYZjsI",
+    authDomain: "foodfair-meat.firebaseapp.com",
+    databaseURL: "https://foodfair-meat-default-rtdb.firebaseio.com",
+    projectId: "foodfair-meat",
+    storageBucket: "foodfair-meat.appspot.com",
+    messagingSenderId: "330607816097",
+    appId: "1:330607816097:web:abc123"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // ── State ────────────────────────────────────────────────────────────
+  let myNumber      = null;
+  let currentServing = null;
+  let speechUnlocked = false;
+  let alertInterval  = null;
+  let warnedAt5      = false;
+  let alertedAt2     = false;
+  let expiredShown   = false;
+
+  // ── Page helpers ─────────────────────────────────────────────────────
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const el = document.getElementById(id);
+    if (el) el.classList.add('active');
+  }
+
+  // ── Tap to Start ─────────────────────────────────────────────────────
+  function tapToStart() {
+    unlockSpeech();
+    showPage('pageLoading');
+    assignNumber();
+  }
+
+  // Auto-start on page load
+  window.addEventListener("load", function() {
+    showPage("pageLoading");
+    assignNumber();
+  });
+
+  // ── Unlock speech on user gesture (iOS requirement) ──────────────────
+  function unlockSpeech() {
+    if (speechUnlocked) return;
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0;
+    window.speechSynthesis.speak(u);
+    speechUnlocked = true;
+  }
+
+  // ── Enable voice alerts button ───────────────────────────────────────
+  function enableAlerts() {
+    unlockSpeech();
+    const btn = document.getElementById('activateBtn');
+    btn.textContent = '✅ Voice alerts enabled!';
+    btn.classList.add('done');
+  }
+
+  // ── Assign ticket number from Firebase ───────────────────────────────
+  function assignNumber() {
+    db.ref('state').once('value').then(snap => {
+      const state   = snap.val() || {};
+      const serving = state.serving  || 1;
+      const next    = state.nextTicket || (serving + 1);
+
+      myNumber = next;
+      db.ref('state/nextTicket').set(next + 1);
+
+      const now = new Date();
+      document.getElementById('myNumber').textContent   = myNumber;
+      document.getElementById('ticketDate').textContent = now.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+      document.getElementById('ticketTime').textContent = now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
+      document.getElementById('nowServing').textContent = serving;
+      currentServing = serving;
+
+      updateNumberColor();
+      showPage('pageTicket');
+      listenForUpdates();
+    });
+  }
+
+  // ── Get a new number (after expired) ─────────────────────────────────
+  function getNewNumber() {
+    warnedAt5    = false;
+    alertedAt2   = false;
+    expiredShown = false;
+    db.ref('state/serving').off();
+    clearAlertLoop();
+    showPage('pageLoading');
+    assignNumber();
+  }
+
+  // ── Listen for "now serving" changes ─────────────────────────────────
+  function listenForUpdates() {
+    db.ref('state/serving').on('value', snap => {
+      const serving = snap.val() || 1;
+      currentServing = serving;
+      document.getElementById('nowServing').textContent = serving;
+      updateNumberColor();
+      checkTriggers();
+    });
+  }
+
+  function updateNumberColor() {
+    const el = document.getElementById('myNumber');
+    if (!el || myNumber === null) return;
+    const diff = myNumber - currentServing;
+    if (diff <= 2) el.classList.add('red');
+    else           el.classList.remove('red');
+  }
+
+  // ── Check what action to take ─────────────────────────────────────────
+  function checkTriggers() {
+    if (myNumber === null) return;
+    const diff = myNumber - currentServing;
+
+    if (diff < 0 && !expiredShown) {
+      expiredShown = true;
+      clearAlertLoop();
+      window.speechSynthesis.cancel();
+      showExpiredScreen();
+      return;
+    }
+
+    if (diff <= 2 && !alertedAt2) {
+      alertedAt2 = true;
+      showRedAlert();
+      return;
+    }
+
+    if (diff <= 5 && diff > 2 && !warnedAt5) {
+      warnedAt5 = true;
+      speakWarning();
+    }
+  }
+
+  // ── Full-screen red alert ─────────────────────────────────────────────
+  function showRedAlert() {
+    const sub = document.getElementById('alertSubText');
+    sub.innerHTML =
+      'Number <strong>' + myNumber + '</strong> — please come to the counter!<br>' +
+      'Número <strong>' + myNumber + '</strong> — ¡por favor venga al mostrador!<br>' +
+      'Nimewo <strong>' + myNumber + '</strong> — tanpri vini nan konte a!';
+
+    document.getElementById('alertOverlay').classList.add('active');
+    if (navigator.vibrate) navigator.vibrate([600, 200, 600, 200, 600]);
+
+    speakAlert();
+    clearAlertLoop();
+    alertInterval = setInterval(speakAlert, 12000);
+  }
+
+  function silenceAlert() {
+    clearAlertLoop();
+    window.speechSynthesis.cancel();
+    document.getElementById('alertOverlay').classList.remove('active');
+  }
+
+  function clearAlertLoop() {
+    if (alertInterval) { clearInterval(alertInterval); alertInterval = null; }
+  }
+
+  // ── Speak functions ───────────────────────────────────────────────────
+  function speakAlert() {
+    window.speechSynthesis.cancel();
+    const msgs = [
+      { text: 'Your turn is up! Please report to the meat department.',             lang: 'en-US' },
+      { text: 'Su turno ha llegado. Por favor diríjase al departamento de carnes.', lang: 'es-ES' },
+      { text: 'Nimewo ou rele. Tanpri ale nan depatman vyann nan.',                  lang: 'fr-FR' }
+    ];
+    speakSequence(msgs, 0);
+  }
+
+  function speakWarning() {
+    window.speechSynthesis.cancel();
+    const msgs = [
+      { text: 'Your number is almost up. Please make your way to the meat counter.',             lang: 'en-US' },
+      { text: 'Su número está casi listo. Por favor diríjase al departamento de carnes.',        lang: 'es-ES' },
+      { text: 'Nimewo ou prèske rive. Tanpri ale nan depatman vyann nan.',                       lang: 'fr-FR' }
+    ];
+    speakSequence(msgs, 0);
+  }
+
+  function speakExpired() {
+    window.speechSynthesis.cancel();
+    const msgs = [
+      { text: 'Your number was already called. Would you like a new number?',              lang: 'en-US' },
+      { text: 'Su número ya fue llamado. ¿Desea un nuevo número?',                         lang: 'es-ES' },
+      { text: 'Nimewo ou deja rele. Eske ou vle yon nouvo nimewo?',                        lang: 'fr-FR' }
+    ];
+    speakSequence(msgs, 0);
+  }
+
+  function speakSequence(msgs, idx) {
+    if (idx >= msgs.length) return;
+    const u  = new SpeechSynthesisUtterance(msgs[idx].text);
+    u.lang   = msgs[idx].lang;
+    u.rate   = 0.92;
+    u.volume = 1;
+    u.onend  = () => speakSequence(msgs, idx + 1);
+    window.speechSynthesis.speak(u);
+  }
+
+  // ── Expired screen ────────────────────────────────────────────────────
+  function showExpiredScreen() {
+    const sub = document.getElementById('expiredSubText');
+    sub.innerHTML =
+      'Your number <strong>' + myNumber + '</strong> was already called.<br>' +
+      'Would you like a new number?<br><br>' +
+      '<small>Su número fue llamado. ¿Desea uno nuevo?<br>' +
+      'Nimewo ou rele deja. Vle yon nouvo nimewo?</small>';
+    showPage('pageExpired');
+    speakExpired();
+  }
+
+  // ── Thank you screen ──────────────────────────────────────────────────
+  function showThankyou() {
+    db.ref('state/serving').off();
+    window.speechSynthesis.cancel();
+    showPage('pageThankyou');
+  }
+</script>
+</body>
+</html>
