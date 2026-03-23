@@ -264,7 +264,11 @@
   function speakPhrases(phrases, idx, onAllDone) {
     if (idx >= phrases.length) { if (onAllDone) onAllDone(); return; }
     const { text, code, lang } = phrases[idx];
-    speakOne(text, code, lang, () => speakPhrases(phrases, idx + 1, onAllDone));
+    try {
+      speakOne(text, code, lang, () => speakPhrases(phrases, idx + 1, onAllDone));
+    } catch(e) {
+      speakPhrases(phrases, idx + 1, onAllDone);
+    }
   }
 
   // ── Audio (Web Audio API beeps + Speech) ──
@@ -324,21 +328,29 @@
   function startAlertLoop(myNum) {
     if (!audioUnlocked) return;
     playUrgentBeeps();
-    const phrases = [
-      { text: `Attention! Your number ${wordsEN(myNum)} is now being called. Please come to the meat counter immediately.`, code: 'en', lang: 'en-US' },
-      { text: `Atención! Su número ${wordsES(myNum)} está siendo llamado. Por favor preséntese al mostrador de carnes.`, code: 'es', lang: 'es-ES' },
-      { text: `Atansyon! Nimewo ${wordsHT_speech(myNum)} ou ap rele kounye a. Tanpri vini nan kontwa vyann nan imedyatman.`, code: 'fr', lang: 'fr-FR' },
-    ];
+    const enPhrase = { text: `Attention! Your number ${wordsEN(myNum)} is now being called. Please come to the meat counter immediately.`, code: 'en', lang: 'en-US' };
+    const esPhrase = { text: `Atención! Su número ${wordsES(myNum)} está siendo llamado. Por favor preséntese al mostrador de carnes.`, code: 'es', lang: 'es-ES' };
     setTimeout(() => {
-      speakPhrases(phrases, 0, () => {
-        alertLoopTimer = setTimeout(() => startAlertLoop(myNum), 3000);
+      speakPhrases([enPhrase, esPhrase], 0, () => {
+        playAudioTracked(URGENT_AUDIO, () => {
+          alertLoopTimer = setTimeout(() => startAlertLoop(myNum), 3000);
+        });
       });
-    }, 1200);
+    }, 800);
   }
 
+  let currentAudio = null;
+  function playAudioTracked(src, onDone) {
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    currentAudio = new Audio(src);
+    currentAudio.onended = () => { currentAudio = null; if (onDone) onDone(); };
+    currentAudio.onerror = () => { currentAudio = null; if (onDone) onDone(); };
+    currentAudio.play().catch(() => { currentAudio = null; if (onDone) onDone(); });
+  }
   function stopAlertLoop() {
     if (alertLoopTimer) { clearTimeout(alertLoopTimer); alertLoopTimer = null; }
     if (window.speechSynthesis) speechSynthesis.cancel();
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
   }
   function silenceAlert() {
     stopAlertLoop();
@@ -363,16 +375,15 @@
       localStorage.removeItem('myTicket');
       silenceAlert();
       document.getElementById('expiredSubText').innerHTML =
-        'Your number was called.<br>Su número fue llamado.<br>Nimewo ou rele deja.';
+        'Your number was called.<br>Su número fue llamado.<br>Nimewo ou la rele deja.';
       showPage('pageExpired');
       playUrgentBeeps();
       setTimeout(() => {
-        const phrases = [
+        const phrasesExp = [
           { text: `Your number ${wordsEN(myNum)} was already called. Would you like a new number?`, code: 'en', lang: 'en-US' },
           { text: `Su número ${wordsES(myNum)} ya fue llamado. ¿Le gustaría un nuevo número?`, code: 'es', lang: 'es-ES' },
-          { text: `Nimewo ${wordsHT_speech(myNum)} ou deja rele. Èske ou ta renmen yon nouvo nimewo?`, code: 'fr', lang: 'fr-FR' },
         ];
-        speakPhrases(phrases, 0);
+        speakPhrases(phrasesExp, 0, () => { playAudioTracked(EXPIRED_AUDIO); });
       }, 1200);
 
     } else if (diff <= 2 && diff > 0 && !alerted2) {
@@ -390,12 +401,11 @@
       if (navigator.vibrate) navigator.vibrate([200,100,200]);
       playWarningBeep();
       setTimeout(() => {
-        const phrases = [
+        const phrasesWarn = [
           { text: `Your turn is coming soon. Number ${wordsEN(myNum)}, please make your way to the meat counter.`, code: 'en', lang: 'en-US' },
           { text: `Su turno se acerca. Número ${wordsES(myNum)}, por favor diríjase al mostrador de carnes.`, code: 'es', lang: 'es-ES' },
-          { text: `Se prèske tou ou a. Nimewo ${wordsHT_speech(myNum)}, tanpri ale nan kontwa vyann nan.`, code: 'fr', lang: 'fr-FR' },
         ];
-        speakPhrases(phrases, 0);
+        speakPhrases(phrasesWarn, 0, () => { playAudioTracked(WARNING_AUDIO); });
       }, 800);
     }
   }
