@@ -252,13 +252,22 @@
 
   function speakOne(text, code, lang, onDone) {
     if (!window.speechSynthesis || !audioUnlocked) { if (onDone) onDone(); return; }
+    // iOS fix: cancel any pending speech first
+    speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang; u.rate = speechRate[code] || 0.80; u.pitch = 1; u.volume = 1;
     const voice = getBestVoice(code);
     if (voice) u.voice = voice;
-    u.onend = onDone || null;
-    u.onerror = onDone || null;
-    speechSynthesis.speak(u);
+    let done = false;
+    function finish() { if (!done) { done = true; if (onDone) onDone(); } }
+    u.onend = finish;
+    u.onerror = finish;
+    // iOS sometimes silently drops speech - safety timeout
+    const timeout = setTimeout(finish, Math.max(text.length * 80, 4000));
+    u.onend = () => { clearTimeout(timeout); finish(); };
+    u.onerror = () => { clearTimeout(timeout); finish(); };
+    // Small delay after cancel so iOS is ready
+    setTimeout(() => speechSynthesis.speak(u), 100);
   }
 
   function speakPhrases(phrases, idx, onAllDone) {
