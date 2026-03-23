@@ -153,9 +153,6 @@
 
   function pad(n) { return String(n).padStart(3,'0'); }
   let alerted5=false, alerted2=false, myNumStr=null;
-  const WARNING_AUDIO = 'https://jodelaristilde.github.io/meat-ticket/warning.mp3';
-  const URGENT_AUDIO = 'https://jodelaristilde.github.io/meat-ticket/urgent.mp3';
-  const EXPIRED_AUDIO = 'https://jodelaristilde.github.io/meat-ticket/expired.mp3';
 
   function showPage(id) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -331,20 +328,18 @@
   function startAlertLoop(myNum) {
     if (!audioUnlocked) return;
     playUrgentBeeps();
-    const enPhrase = { text: `Attention! Your number ${wordsEN(myNum)} is now being called. Please come to the meat counter immediately.`, code: 'en', lang: 'en-US' };
-    const esPhrase = { text: `Atención! Su número ${wordsES(myNum)} está siendo llamado. Por favor preséntese al mostrador de carnes.`, code: 'es', lang: 'es-ES' };
+    const phrasesUrgent = [
+      { text: `Attention! Your number ${wordsEN(myNum)} is now being called. Please come to the meat counter immediately.`, code: 'en', lang: 'en-US' },
+      { text: `Atención! Su número ${wordsES(myNum)} está siendo llamado. Por favor preséntese al mostrador de carnes.`, code: 'es', lang: 'es-ES' },
+      { text: `Atansyon! yap rele Nimewo paw la kounye a. tanpri ale nan depatman vyann nan imedyatman.`, code: 'fr', lang: 'fr-FR' },
+    ];
     setTimeout(() => {
-      speakPhrases([enPhrase, esPhrase], 0, () => {
-        playAudioTracked(URGENT_AUDIO, () => {
-          alertLoopTimer = setTimeout(() => startAlertLoop(myNum), 3000);
-        });
+      speakPhrases(phrasesUrgent, 0, () => {
+        alertLoopTimer = setTimeout(() => startAlertLoop(myNum), 3000);
       });
     }, 800);
   }
 
-  let currentAudio = null;
-  function playAudioTracked(src, onDone) {
-    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
     currentAudio = new Audio(src);
     currentAudio.onended = () => { currentAudio = null; if (onDone) onDone(); };
     currentAudio.onerror = () => { currentAudio = null; if (onDone) onDone(); };
@@ -353,7 +348,6 @@
   function stopAlertLoop() {
     if (alertLoopTimer) { clearTimeout(alertLoopTimer); alertLoopTimer = null; }
     if (window.speechSynthesis) speechSynthesis.cancel();
-    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
   }
   function silenceAlert() {
     stopAlertLoop();
@@ -382,11 +376,12 @@
       showPage('pageExpired');
       playUrgentBeeps();
       setTimeout(() => {
-        const phrasesExp = [
+            const phrasesExpHT = [
           { text: `Your number ${wordsEN(myNum)} was already called. Would you like a new number?`, code: 'en', lang: 'en-US' },
           { text: `Su número ${wordsES(myNum)} ya fue llamado. ¿Le gustaría un nuevo número?`, code: 'es', lang: 'es-ES' },
+          { text: `Nimewo paw la rele deja. Èske ou ta renmen pran yon lot nimewo?`, code: 'fr', lang: 'fr-FR' },
         ];
-        speakPhrases(phrasesExp, 0, () => { playAudioTracked(EXPIRED_AUDIO); });
+        speakPhrases(phrasesExpHT, 0);
       }, 1200);
 
     } else if (diff <= 2 && diff > 0 && !alerted2) {
@@ -404,11 +399,12 @@
       if (navigator.vibrate) navigator.vibrate([200,100,200]);
       playWarningBeep();
       setTimeout(() => {
-        const phrasesWarn = [
+            const phrasesWarnHT = [
           { text: `Your turn is coming soon. Number ${wordsEN(myNum)}, please make your way to the meat counter.`, code: 'en', lang: 'en-US' },
           { text: `Su turno se acerca. Número ${wordsES(myNum)}, por favor diríjase al mostrador de carnes.`, code: 'es', lang: 'es-ES' },
+          { text: `Atansyon! Nimewo paw la prèske rive tanpri ale nan depatman vyann nan.`, code: 'fr', lang: 'fr-FR' },
         ];
-        speakPhrases(phrasesWarn, 0, () => { playAudioTracked(WARNING_AUDIO); });
+        speakPhrases(phrasesWarnHT, 0);
       }, 800);
     }
   }
