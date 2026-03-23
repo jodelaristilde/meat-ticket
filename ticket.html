@@ -349,11 +349,6 @@
     }, 800);
   }
 
-    currentAudio = new Audio(src);
-    currentAudio.onended = () => { currentAudio = null; if (onDone) onDone(); };
-    currentAudio.onerror = () => { currentAudio = null; if (onDone) onDone(); };
-    currentAudio.play().catch(() => { currentAudio = null; if (onDone) onDone(); });
-  }
   function stopAlertLoop() {
     if (alertLoopTimer) { clearTimeout(alertLoopTimer); alertLoopTimer = null; }
     if (window.speechSynthesis) speechSynthesis.cancel();
